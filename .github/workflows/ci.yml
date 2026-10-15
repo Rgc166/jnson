@@ -1,0 +1,47 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore tests/VeyonSync.Tests/VeyonSync.Tests.csproj --locked-mode
+      - run: dotnet test tests/VeyonSync.Tests/VeyonSync.Tests.csproj -c Release --no-restore --logger trx
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-test-results
+          path: tests/**/TestResults/*.trx
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Validate PowerShell scripts and helpers
+        shell: pwsh
+        run: ./scripts/check-scripts.ps1
+      - name: Compile WPF and services
+        run: dotnet build VeyonSync.slnx -c Release -p:RestoreLockedMode=true -warnaserror
+      - name: Package Windows applications
+        shell: pwsh
+        run: ./scripts/build.ps1
+      - name: Install and exercise services on disposable runner
+        shell: pwsh
+        run: ./scripts/windows-smoke.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-packages-and-checksums
+          path: |
+            artifacts/*.zip
+            artifacts/SHA256SUMS.txt

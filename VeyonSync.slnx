@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VeyonSync.Core/VeyonSync.Core.csproj" />
+    <Project Path="src/VeyonSync.Desktop/VeyonSync.Desktop.csproj" />
+    <Project Path="src/VeyonSync.Student.App/VeyonSync.Student.App.csproj" />
+    <Project Path="src/VeyonSync.Student/VeyonSync.Student.csproj" />
+    <Project Path="src/VeyonSync.Teacher.App/VeyonSync.Teacher.App.csproj" />
+    <Project Path="src/VeyonSync.Teacher/VeyonSync.Teacher.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VeyonSync.Tests/VeyonSync.Tests.csproj" />
+  </Folder>
+</Solution>

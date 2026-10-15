@@ -1,0 +1,27 @@
+name: Relatar problema
+description: Falha de instalação, comunicação ou interface
+body:
+  - type: markdown
+    attributes:
+      value: Não inclua tokens, códigos de pareamento, chaves privadas ou dados pessoais. Para vulnerabilidades, consulte SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Versão do VeyonSync e Windows
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente
+      options: [Professor, Aluno, Instalação, Integração Veyon]
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Passos, resultado esperado e resultado observado
+    validations:
+      required: true
+  - type: textarea
+    id: diagnosis
+    attributes:
+      label: Diagnóstico revisado e sem informações sensíveis

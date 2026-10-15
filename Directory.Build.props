@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <Deterministic>true</Deterministic>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <Version>0.2.0-preview.1</Version>
+  </PropertyGroup>
+</Project>
