@@ -34,10 +34,20 @@ jobs:
         run: dotnet build VeyonSync.slnx -c Release -p:RestoreLockedMode=true -warnaserror
       - name: Package Windows applications
         shell: pwsh
-        run: ./scripts/build.ps1
+        run: |
+          try { ./scripts/build.ps1 }
+          catch {
+            Write-Output "::error::$($_.Exception.Message.Replace("`r",'').Replace("`n",'%0A'))"
+            throw
+          }
       - name: Install and exercise services on disposable runner
         shell: pwsh
-        run: ./scripts/windows-smoke.ps1
+        run: |
+          try { ./scripts/windows-smoke.ps1 }
+          catch {
+            Write-Output "::error::$($_.Exception.Message.Replace("`r",'').Replace("`n",'%0A'))"
+            throw
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:

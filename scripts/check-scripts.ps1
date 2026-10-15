@@ -24,3 +24,7 @@ try {
     if(-not $caught){throw 'Native command failure was not propagated.'}
     Write-Host 'PASS native command exit status preserved'
 } finally {Remove-Item -LiteralPath $temporary -Recurse -Force}
+# The nonzero native exit above is an expected assertion. GitHub's PowerShell
+# wrapper propagates LASTEXITCODE even when that assertion was handled correctly.
+# Failures still throw before reaching this successful completion marker.
+$global:LASTEXITCODE=0
