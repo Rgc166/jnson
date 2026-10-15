@@ -2,7 +2,15 @@
 
 Data: 15/10/2026. Ambiente de execução: Linux x64. SDK .NET 10.0.402; PowerShell 7.6.7 obtido da distribuição oficial e conferido com SHA-256 publicado pelo projeto.
 
-## Verificado neste ambiente
+## Atualização: GitHub Actions no Windows
+
+A [execução 38800050279](https://github.com/Rgc166/jnson/actions/runs/38800050279), do commit `b74615d`, concluiu com sucesso os jobs Linux e Windows. No runner Windows descartável, compilação, geração dos pacotes e `windows-smoke.ps1` passaram: instalação de professor/aluno, TLS, pareamento, relatório confirmado, preservação de identidade, reinício/reparo sem duplicação e remoção dos serviços de teste.
+
+Os [pacotes Windows com checksums estão no artefato desta execução](https://github.com/Rgc166/jnson/actions/runs/38800050279/artifacts/12003967926). O download exige uma sessão autenticada no GitHub. Esse teste não renderiza as janelas WPF, não mede recusa de acesso de um usuário comum e não executa o Veyon real.
+
+As verificações Linux abaixo são o registro inicial; a lista de pendências foi ajustada com esse resultado posterior.
+
+## Verificado inicialmente no Linux
 
 | Verificação | Resultado |
 |---|---|
@@ -20,11 +28,11 @@ Os testes do adaptador Veyon usam um executor controlado para testar os comandos
 ## Ainda não verificado
 
 - Execução e renderização das janelas WPF, temas, teclado, DPI, acessibilidade e redimensionamento no Windows.
-- Instalação, reparo e remoção reais, serviços SYSTEM, ACLs NTFS, canal administrativo e recusa de usuários comuns no Windows.
+- Instalação no Windows 10/11 real do laboratório e recusa de leitura/ações por usuários comuns. O smoke test dos serviços no runner Windows passou; isso não substitui a conferência de segurança e operação na rede do laboratório.
 - Coleta real de usuário, IP e MAC, incluindo PCs sem sessão e troca de rede.
 - TLS professor–aluno em computadores separados, DNS, firewall e o caso histórico de falha no PC03.
 - Atualização e restauração na instalação real do Veyon e atualização visual do Veyon Master.
-- Execução do workflow no GitHub: os arquivos estão preparados, mas não houve push nem execução remota.
+- Funcionamento na rede física do laboratório: os jobs do GitHub passaram, mas não usam a rede ou os computadores locais do usuário.
 
 ## Roteiro de aceitação no Windows
 
