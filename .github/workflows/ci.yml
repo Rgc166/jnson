@@ -15,7 +15,7 @@ jobs:
           global-json-file: global.json
       - run: dotnet restore tests/VeyonSync.Tests/VeyonSync.Tests.csproj --locked-mode
       - run: dotnet test tests/VeyonSync.Tests/VeyonSync.Tests.csproj -c Release --no-restore --logger trx
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: core-test-results
@@ -48,7 +48,7 @@ jobs:
             Write-Output "::error::$($_.Exception.Message.Replace("`r",'').Replace("`n",'%0A'))"
             throw
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: windows-packages-and-checksums
