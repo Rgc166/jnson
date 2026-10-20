@@ -9,3 +9,5 @@ Use the SDK pinned in global.json. Restore with `dotnet restore VeyonSync.slnx -
 Keep TLS name/chain/fingerprint checks, local pipe ACLs and atomic data persistence. Do not commit tokens, certificates, databases or logs. Never use `networkobjects clear`, assume CSV import updates UUIDs, silently move agents between labs, or discard pending data to make setup pass.
 
 The Windows smoke script installs services and must run only on a disposable machine without existing VeyonSync data. The repository has no chosen distribution license; do not invent one or publish releases without the owner's instruction.
+
+`VeyonSync.Teacher.THC` is an interface-only companion for the separately uploaded etapa 2 service. `Stage2Reader` must open its database in ReadOnly mode and never migrate it. Legacy actions go through the installed CLI or authenticated HTTPS API. Never install the original Teacher service package over etapa 2 to add a UI. `scripts/build-thc.ps1` creates the companion package; `windows-thc-smoke.ps1` uses an isolated stopped-service fixture to verify preservation, shortcuts and WPF startup.

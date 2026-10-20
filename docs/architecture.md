@@ -1,5 +1,15 @@
 # Arquitetura
 
+## Compatibilidade THC com a etapa 2 enviada separadamente
+
+O executável `VeyonSync.Teacher.THC` é um complemento para a instalação que usa `Teacher\VeyonSync.Teacher.exe` e `Teacher\appsettings.json`. Ele não substitui esse serviço pelo serviço em `Teacher\Service` deste repositório. A interface usa o mesmo shell WPF com um adaptador específico.
+
+Como o serviço da etapa 2 não possui named pipes, o adaptador lê inventário/histórico por uma conexão SQLite **somente leitura** com transação de leitura. Não consulta tokens ou hashes administrativos. Pareamento, exportação `.vsync` e coleta usam comandos fixos do executável instalado, com `ArgumentList`, sem shell. Integração usa a API HTTPS existente com validação do certificado/nome e uma chave fornecida pelo administrador ou gerada após confirmação explícita. A chave da interface fica em uma pasta administrativa própria, protegida por DPAPI LocalMachine e ACL.
+
+Essa é uma exceção de compatibilidade à arquitetura IPC dos serviços originais descrita abaixo. O instalador do complemento modifica somente `Teacher\THC` e cria atalhos; não toca no serviço nem no banco. Os binários permitem leitura/execução por usuários comuns para que o manifesto possa solicitar UAC; escrita é restrita a Administradores e SYSTEM. A janela e suas ações continuam exigindo elevação.
+
+## Serviços originais deste repositório
+
 ```mermaid
 flowchart LR
     SA[Interface Aluno · administrador] <-->|Named pipe com ACL| SS[Serviço Aluno · SYSTEM]

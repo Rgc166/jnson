@@ -1,0 +1,41 @@
+name: Professor THC - Etapa 2
+on:
+  push:
+    branches: [codex/teacher-thc-stage2]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  professor-thc:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Validate scripts and compile
+        shell: pwsh
+        run: |
+          ./scripts/check-scripts.ps1
+          dotnet build VeyonSync.slnx -c Release -p:RestoreLockedMode=true -warnaserror
+          if($LASTEXITCODE -ne 0){throw 'Build failed.'}
+          dotnet test tests/VeyonSync.Tests/VeyonSync.Tests.csproj -c Release --no-build
+          if($LASTEXITCODE -ne 0){throw 'Tests failed.'}
+      - name: Build the interface-only package
+        shell: pwsh
+        run: |
+          try { ./scripts/build-thc.ps1 }
+          catch { Write-Output "::error::$($_.Exception.Message.Replace("`r",'').Replace("`n",'%0A'))"; throw }
+      - name: Verify add-on installer and WPF window
+        shell: pwsh
+        run: |
+          try { ./scripts/windows-thc-smoke.ps1 }
+          catch { Write-Output "::error::$($_.Exception.Message.Replace("`r",'').Replace("`n",'%0A'))"; throw }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: professor-thc-etapa2
+          path: |
+            artifacts/VeyonSync-Professor-THC-win-x64.zip
+            artifacts/THC-SHA256SUMS.txt

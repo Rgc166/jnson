@@ -32,6 +32,14 @@ As interfaces compartilham tema escuro padrão, tema claro, opção de seguir o 
 
 **Sem dados fictícios:** serviço indisponível aparece como indisponível. “Comunicação recente” não significa que o Veyon Master confirmou disponibilidade da máquina.
 
+## Já instalou o ZIP da etapa 2 e precisa da janela THC?
+
+Use o **complemento Professor THC**, sem colar pastas da etapa 1 ou reinstalar o serviço. Ele lê o inventário real da etapa 2 e usa o executável/API já instalado para as ações administrativas.
+
+O artefato **professor-thc-etapa2** é gerado pelo workflow **Professor THC - Etapa 2** no GitHub Actions. Extraia o ZIP e execute **INSTALAR-INTERFACE-THC.bat**. O instalador cria o atalho **VeyonSync THC** na Área de Trabalho e abre a janela.
+
+[Passo a passo e compatibilidade com a etapa 2](docs/instalar-thc.md).
+
 ## Começar
 
 ### Para desenvolver

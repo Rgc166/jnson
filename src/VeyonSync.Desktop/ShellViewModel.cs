@@ -5,9 +5,11 @@ using VeyonSync.Core;
 
 namespace VeyonSync.Desktop;
 
-public sealed class ShellViewModel(string role) : INotifyPropertyChanged
+public sealed class ShellViewModel(string role, bool stage2 = false) : INotifyPropertyChanged
 {
     public string Role { get; } = role;
+    public bool Stage2 { get; } = stage2;
+    private readonly Stage2Client? stage2Client = stage2 ? new Stage2Client() : null;
     public Snapshot? Snapshot { get; private set; }
     private string heading = "Conectando ao serviço…", message = "", clock = "", service = "Aguardando serviço";
     private bool busy;
@@ -26,8 +28,8 @@ public sealed class ShellViewModel(string role) : INotifyPropertyChanged
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(4));
-            Snapshot = await LocalRpc.Call<Snapshot>(Role, "snapshot", ct: timeout.Token);
-            Connected = true; Heading = $"Laboratório {Snapshot.Lab}  ·  {Snapshot.Computer}"; Service = "● Serviço em execução";
+            Snapshot = stage2Client != null ? await stage2Client.Call<Snapshot>("snapshot", ct: timeout.Token) : await LocalRpc.Call<Snapshot>(Role, "snapshot", ct: timeout.Token);
+            Connected = true; Heading = $"Laboratório {Snapshot.Lab}  ·  {Snapshot.Computer}"; Service = "● Serviço: " + Snapshot.Service;
         }
         catch (Exception e)
         {
@@ -42,6 +44,6 @@ public sealed class ShellViewModel(string role) : INotifyPropertyChanged
         if (!Connected) throw new InvalidOperationException("O serviço está indisponível. Confira a instalação e o diagnóstico.");
         if (Busy) throw new InvalidOperationException("Aguarde a operação atual terminar.");
         Busy = true;
-        try { return await LocalRpc.Call<T>(Role, action, data); } finally { Busy = false; }
+        try { return stage2Client != null ? await stage2Client.Call<T>(action, data) : await LocalRpc.Call<T>(Role, action, data); } finally { Busy = false; }
     }
 }

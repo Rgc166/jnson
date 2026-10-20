@@ -27,13 +27,14 @@ public partial class MainWindow : Window
     private long lastEvent;
     private readonly string prefs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VeyonSync", "ui.json");
     private readonly Dictionary<string, string> icons = new() { { "Dashboard", "◫" }, { "Computadores", "▤" }, { "Laboratórios", "▦" }, { "Integração", "⇄" }, { "Histórico", "◷" }, { "Pareamento", "⊕" }, { "Diagnóstico", "⊙" }, { "Configurações", "⚙" } };
-    public MainWindow(string role)
+    public MainWindow(string role, bool stage2 = false)
     {
         InitializeComponent();
         Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/VeyonSync.Desktop;component/Themes.xaml", UriKind.Relative) });
         SetResourceReference(BackgroundProperty, "Canvas"); SetResourceReference(ForegroundProperty, "Ink");
-        vm = new(role); DataContext = vm; RoleLabel.Text = role == "Teacher" ? "Professor · Administração" : "Aluno · Conexão";
-        Title = "VeyonSync · " + (role == "Teacher" ? "Professor" : "Aluno");
+        vm = new(role, stage2); DataContext = vm; RoleLabel.Text = role == "Teacher" ? "Professor · Administração" : "Aluno · Conexão";
+        Title = stage2 ? "VeyonSync THC · Professor · Etapa 2" : "VeyonSync · " + (role == "Teacher" ? "Professor" : "Aluno");
+        if (stage2) { Brand.Text = "VEYONSYNC THC"; RoleLabel.Text = "Professor · Etapa 2"; VersionLabel.Text = "Interface THC · Etapa 2"; }
         if (role == "Student") { Width = 980; Height = 710; }
         try { theme = Files.Read<Dictionary<string, string>>(prefs).GetValueOrDefault("theme", "Escuro"); } catch (IOException) { }
         ApplyTheme(); BuildNavigation();
@@ -54,6 +55,7 @@ public partial class MainWindow : Window
     {
         var colors = Light() ? new Dictionary<string, string> { { "Canvas", "#F8FAFC" }, { "Sidebar", "#FFFFFF" }, { "Card", "#FFFFFF" }, { "Primary", "#2563EB" }, { "Ink", "#0F172A" }, { "Muted", "#475569" }, { "Line", "#CBD5E1" } } :
             new Dictionary<string, string> { { "Canvas", "#0B1120" }, { "Sidebar", "#111827" }, { "Card", "#1E293B" }, { "Primary", "#3B82F6" }, { "Ink", "#F8FAFC" }, { "Muted", "#94A3B8" }, { "Line", "#334155" } };
+        if (vm.Stage2) colors["Primary"] = "#0E7490";
         foreach (var (key, color) in colors)
         {
             var target = (Color)ColorConverter.ConvertFromString(color);
@@ -79,7 +81,7 @@ public partial class MainWindow : Window
         NavColumn.Width = new GridLength(targetWidth);
         if (SystemParameters.ClientAreaAnimation)
             NavColumn.BeginAnimation(ColumnDefinition.WidthProperty, new GridLengthAnimation { From = previousWidth, To = targetWidth, Duration = TimeSpan.FromMilliseconds(220) });
-        Brand.Text = collapsed ? "VS" : "VEYONSYNC"; RoleLabel.Visibility = VersionLabel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible; BuildNavigation();
+        Brand.Text = collapsed ? "VS" : vm.Stage2 ? "VEYONSYNC THC" : "VEYONSYNC"; RoleLabel.Visibility = VersionLabel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible; BuildNavigation();
     }
     private void BuildNavigation()
     {
@@ -108,7 +110,7 @@ public partial class MainWindow : Window
             var newest = vm.Snapshot.Events.FirstOrDefault()?.Id ?? 0;
             if (lastEvent > 0 && newest > lastEvent) vm.Message = $"{vm.Snapshot.Events.Count(e => e.Id > lastEvent)} novos eventos. Consulte o histórico.";
             lastEvent = newest;
-            if (activeCode != null && vm.Snapshot.Events.Any(e => e.Kind == "Pareamento" && e.Time >= activeCode.Expires.AddMinutes(-15)))
+            if (!vm.Stage2 && activeCode != null && vm.Snapshot.Events.Any(e => e.Kind == "Pareamento" && e.Time >= activeCode.Expires.AddMinutes(-15)))
             {
                 activeCode = null; if (codeText != null) codeText.Text = "Código utilizado"; if (pairCountdown != null) pairCountdown.Text = "Aluno pareado. Gere outro código para o próximo computador.";
             }
@@ -207,8 +209,8 @@ public partial class MainWindow : Window
     {
         var panel = new StackPanel(); panel.Children.Add(Text(machine.Position + " · " + machine.Name, 24));
         panel.Children.Add(Text($"Laboratório {machine.Data.Lab}\nIdentidade: {machine.Data.AgentId}\nUsuário: {machine.User ?? "Sem usuário"}\nIP: {machine.Ip}\nMAC: {machine.Data.Mac}\nÚltima comunicação: {machine.LastSeen.ToLocalTime():G}\nIntegração: {machine.Integration}\n{machine.IntegrationError}"));
-        panel.Children.Add(Button("Solicitar nova coleta", async () => vm.Message = await vm.Run<string>("collect", machine.Data.AgentId), true));
-        panel.Children.Add(Button("Revogar autorização", async () => { if (MessageBox.Show(this, "Este aluno precisará de um novo código para voltar a enviar dados. Revogar?", "Revogar agente", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) vm.Message = await vm.Run<string>("revoke", machine.Data.AgentId); }));
+        panel.Children.Add(Button(vm.Stage2 ? "Solicitar coleta para todos" : "Solicitar nova coleta", async () => vm.Message = await vm.Run<string>("collect", vm.Stage2 ? null : machine.Data.AgentId), true));
+        if (!vm.Stage2) panel.Children.Add(Button("Revogar autorização", async () => { if (MessageBox.Show(this, "Este aluno precisará de um novo código para voltar a enviar dados. Revogar?", "Revogar agente", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) vm.Message = await vm.Run<string>("revoke", machine.Data.AgentId); }));
         panel.Children.Add(Text("Histórico deste computador", 18));
         foreach (var ev in (vm.Snapshot?.Events ?? []).Where(e => e.AgentId == machine.Data.AgentId)) panel.Children.Add(Text($"{ev.Time.ToLocalTime():g} · {ev.Kind}\n{ev.Detail}", 12));
         Dialog("Detalhes do computador", Scroll(panel)).ShowDialog(); return Task.CompletedTask;
@@ -253,6 +255,7 @@ public partial class MainWindow : Window
             if (picker.ShowDialog(this) == true) { var s = vm.Snapshot; File.WriteAllText(picker.FileName, $"VeyonSync 0.2.0 · {DateTimeOffset.Now:O}\n{vm.Heading}\n{vm.Service}\n" + string.Join("\n", s?.Diagnostics.Select(d => $"{d.Name}: {d.Ok} · {d.Detail}") ?? []) + "\n" + string.Join("\n", s?.Events.Where(e => e.Kind.Contains("Falha") || e.Kind.Contains("Integração")).Take(50).Select(e => $"{e.Time:O} {e.Kind}: {e.Detail}") ?? []), new UTF8Encoding(true)); vm.Message = "Diagnóstico exportado. Revise nomes de usuários e endereços antes de compartilhar."; }
             return Task.CompletedTask;
         }));
+        if (vm.Stage2) panel.Children.Add(Button("Iniciar serviço do professor", async () => { vm.Message = await vm.Run<string>("start-service"); await Refresh(); }));
         if (vm.Role == "Student") panel.Children.Add(Button("Testar HTTPS do professor", async () => vm.Message = await vm.Run<string>("diagnose"), true));
         panel.Children.Add(Text("A validação de certificados permanece ativa. Não importe chaves privadas no aluno.", 12)); PageContent.Content = Scroll(panel);
     }
@@ -270,10 +273,14 @@ public partial class MainWindow : Window
         if (vm.Role == "Student") { panel.Children.Add(Text("Autorizar este computador", 22)); panel.Children.Add(Text("Separe o certificado público e um código de uso único gerado no professor do laboratório correto.")); panel.Children.Add(Button("Abrir assistente de pareamento", Wizard, true)); }
         else
         {
-            panel.Children.Add(Text("Adicionar um aluno", 22)); panel.Children.Add(Text("Cada código autoriza um único computador e expira em 15 minutos. Gerar outro código cancela o anterior."));
+            panel.Children.Add(Text("Adicionar um aluno", 22)); panel.Children.Add(Text(vm.Stage2 ? "Cada código autoriza um computador e vale 15 minutos. A etapa 2 pode manter mais de um código válido." : "Cada código autoriza um único computador e expira em 15 minutos. Gerar outro código cancela o anterior."));
             var code = Text(activeCode?.Code ?? "Nenhum código gerado", 36); codeText = code; pairCountdown = Text("");
             panel.Children.Add(Card(code)); panel.Children.Add(pairCountdown);
             panel.Children.Add(Button("Gerar código de pareamento", async () => { activeCode = await vm.Run<PairingCode>("new-code"); code.Text = activeCode.Code; vm.Message = $"Código gerado para {activeCode.Teacher} · Laboratório {activeCode.Lab}. Não compartilhe em logs."; }, true));
+            if (vm.Stage2) panel.Children.Add(Button("Salvar arquivo de ligação .vsync", async () => {
+                var destination = new SaveFileDialog { FileName = "ligacao-lab-" + vm.Snapshot?.Lab + ".vsync", Filter = "Ligação VeyonSync|*.vsync" };
+                if (destination.ShowDialog(this) == true) vm.Message = await vm.Run<string>("export-link", destination.FileName);
+            }));
             panel.Children.Add(Text("A confirmação de novos pareamentos aparece no histórico. O código fica somente nesta tela enquanto válido.", 12));
         }
         PageContent.Content = Scroll(panel);
@@ -281,14 +288,14 @@ public partial class MainWindow : Window
     private void Integration()
     {
         var panel = new StackPanel(); panel.Children.Add(Text("Prévia antes de aplicar", 22));
-        panel.Children.Add(Text("A integração usa uma localização VeyonSync dedicada e nomes estáveis por agente. Cadastros existentes fora desse controle são preservados. Feche o Configurator durante a aplicação."));
+        panel.Children.Add(Text(vm.Stage2 ? "A interface envia a ação para a API autenticada do serviço da etapa 2, usando o laboratório e as regras dessa instalação. Vincule uma chave administrativa em Configurações. Feche o Configurator durante a aplicação." : "A integração usa uma localização VeyonSync dedicada e nomes estáveis por agente. Cadastros existentes fora desse controle são preservados. Feche o Configurator durante a aplicação."));
         var machines = vm.Snapshot?.Machines ?? [];
         var choice = new ComboBox { ItemsSource = machines, DisplayMemberPath = "Position" }; panel.Children.Add(choice);
         var preview = new TextBox { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, MinHeight = 100 }; panel.Children.Add(preview); IntegrationPreview? plan = null;
-        var apply = Button("Criar backup e aplicar", async () =>
+        var apply = Button(vm.Stage2 ? "Aplicar pelo serviço da etapa 2" : "Criar backup e aplicar", async () =>
         {
             if (plan == null) return;
-            if (MessageBox.Show(this, $"Aplicar o cadastro {plan.Name} em {plan.Location}? Um backup da configuração Veyon será criado antes.", "Confirmar integração", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+            if (MessageBox.Show(this, $"Aplicar o cadastro {plan.Name} em {plan.Location}? " + (vm.Stage2 ? "O serviço da etapa 2 cria backup antes das alterações que exigem escrita." : "Um backup da configuração Veyon será criado antes."), "Confirmar integração", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             vm.Message = await vm.Run<string>("apply", plan); plan = null; preview.Text = "Operação concluída. Gere outra prévia para aplicar novamente."; await Refresh();
         }, true); apply.IsEnabled = false;
         choice.SelectionChanged += (_, _) => { plan = null; apply.IsEnabled = false; preview.Text = "Gere uma prévia para o computador selecionado."; };
@@ -298,7 +305,7 @@ public partial class MainWindow : Window
             plan = await vm.Run<IntegrationPreview>("preview", machine.Data.AgentId);
             preview.Text = $"{plan.Action}: {plan.Name}\nLocalização: {plan.Location}\nIP atual: {plan.OldIp ?? "Novo cadastro"}\nNovo IP: {plan.NewIp}\nMAC: {plan.Mac}"; apply.IsEnabled = true;
         })); panel.Children.Add(apply);
-        panel.Children.Add(Button("Restaurar backup…", async () =>
+        if (!vm.Stage2) panel.Children.Add(Button("Restaurar backup…", async () =>
         {
             var backups = await vm.Run<string[]>("backups"); if (backups.Length == 0) throw new InvalidOperationException("Nenhum backup disponível.");
             var content = new StackPanel(); content.Children.Add(Text("Restaura toda a configuração do Veyon presente no backup, inclusive alterações de outros administradores feitas depois dele. Um backup de segurança será criado."));
@@ -313,7 +320,21 @@ public partial class MainWindow : Window
         var panel = new StackPanel();
         if (vm.Role == "Teacher")
         {
-            var cfg = await vm.Run<TeacherConfig>("settings"); panel.Children.Add(Text($"Laboratório {cfg.Lab} · {cfg.TeacherName} · Porta {cfg.Port}"));
+            var cfg = await vm.Run<TeacherConfig>("settings");
+            if (vm.Stage2) {
+                panel.Children.Add(Text($"Laboratório {cfg.Lab} · {cfg.TeacherName} · Porta {cfg.Port}"));
+                panel.Children.Add(Text("Este complemento usa o serviço já instalado. A chave abaixo libera somente as ações de integração da interface; inventário e pareamento funcionam sem ela."));
+                panel.Children.Add(Text("Chave administrativa existente (não é o código de pareamento)"));
+                var key = new PasswordBox(); panel.Children.Add(key);
+                panel.Children.Add(Button("Vincular chave existente", async () => { vm.Message = await vm.Run<string>("connect-admin", key.Password.Trim()); key.Clear(); }, true));
+                panel.Children.Add(Button("Gerar e vincular nova chave local", async () => {
+                    if (MessageBox.Show(this, "Gerar uma nova chave invalida a chave administrativa anterior e exige reconfigurar eventuais painéis centrais. Continuar?", "Nova chave administrativa", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                        vm.Message = await vm.Run<string>("generate-admin");
+                }));
+                panel.Children.Add(Text("O botão acima não altera o pareamento dos alunos. A chave fica protegida por DPAPI e permissões administrativas, fora dos logs.", 12));
+                PageContent.Content = Scroll(panel); return;
+            }
+            panel.Children.Add(Text($"Laboratório {cfg.Lab} · {cfg.TeacherName} · Porta {cfg.Port}"));
             panel.Children.Add(Text("Executável do Veyon CLI")); var path = new TextBox { Text = cfg.VeyonCli }; panel.Children.Add(path);
             panel.Children.Add(Button("Selecionar executável", () => { var file = new OpenFileDialog { Filter = "Veyon CLI|veyon-cli.exe" }; if (file.ShowDialog(this) == true) path.Text = file.FileName; return Task.CompletedTask; }));
             panel.Children.Add(Text("Retenção do histórico em dias (7–3650)")); var days = new TextBox { Text = cfg.RetentionDays.ToString() }; panel.Children.Add(days);
