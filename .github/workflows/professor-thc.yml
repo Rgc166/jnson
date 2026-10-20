@@ -17,11 +17,20 @@ jobs:
       - name: Validate scripts and compile
         shell: pwsh
         run: |
-          ./scripts/check-scripts.ps1
-          dotnet build VeyonSync.slnx -c Release -p:RestoreLockedMode=true -warnaserror
-          if($LASTEXITCODE -ne 0){throw 'Build failed.'}
-          dotnet test tests/VeyonSync.Tests/VeyonSync.Tests.csproj -c Release --no-build
-          if($LASTEXITCODE -ne 0){throw 'Tests failed.'}
+          try {
+            $PSNativeCommandUseErrorActionPreference=$false
+            ./scripts/check-scripts.ps1
+            $output=dotnet build VeyonSync.slnx -c Release -p:RestoreLockedMode=true -warnaserror 2>&1
+            $code=$LASTEXITCODE
+            $output | ForEach-Object { Write-Host $_ }
+            if($code -ne 0){throw (($output | Where-Object {$_ -match 'error [A-Z0-9]+|: error'} | Select-Object -First 4) -join ' | ')}
+            dotnet test tests/VeyonSync.Tests/VeyonSync.Tests.csproj -c Release --no-build --logger 'trx;LogFileName=thc-core.trx' --results-directory artifacts/test-results
+            if($LASTEXITCODE -ne 0){
+              [xml]$result=Get-Content artifacts/test-results/thc-core.trx
+              $errors=$result.TestRun.Results.UnitTestResult | Where-Object outcome -eq Failed | ForEach-Object {$_.Output.ErrorInfo.Message}
+              throw ('Tests failed: '+($errors -join ' | '))
+            }
+          } catch { Write-Output "::error::$($_.Exception.Message.Replace("`r",'').Replace("`n",'%0A'))"; throw }
       - name: Build the interface-only package
         shell: pwsh
         run: |

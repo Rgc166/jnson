@@ -16,7 +16,7 @@ public sealed class Stage2ReaderTests : IDisposable
     {
         Directory.CreateDirectory(dir);
         File.WriteAllText(Config, """{"Lab":"B","Port":5443,"Tls":{"Thumbprint":"PUBLIC"},"Veyon":{"Location":"Lab B","CliPath":""}}""");
-        using var c = new SqliteConnection($"Data Source={Database}"); c.Open();
+        using var c = new SqliteConnection($"Data Source={Database};Pooling=False"); c.Open();
         foreach (var sql in new[] {
             "CREATE TABLE machines(agent_id TEXT PRIMARY KEY,lab TEXT,name TEXT,position TEXT,user TEXT,ip TEXT,mac TEXT,last_seen TEXT,last_seq INTEGER,version TEXT)",
             "CREATE TABLE history(id INTEGER PRIMARY KEY,agent_id TEXT,ts TEXT,kind TEXT,detail TEXT)",
@@ -30,7 +30,7 @@ public sealed class Stage2ReaderTests : IDisposable
     }
     private void Execute(string sql)
     {
-        using var c = new SqliteConnection($"Data Source={Database}"); c.Open(); using var q = c.CreateCommand();
+        using var c = new SqliteConnection($"Data Source={Database};Pooling=False"); c.Open(); using var q = c.CreateCommand();
         q.CommandText = sql; q.Parameters.AddWithValue("@id", id); q.ExecuteNonQuery();
     }
     [Fact] public void ReadsActualStage2InventoryWithoutChangingTheDatabase()
